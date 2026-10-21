@@ -1,0 +1,10 @@
+.env
+__pycache__/
+_backup_*/
+live_check_result.txt
+all_mountains.json
+replace_candidates.json
+foods_check.json
+.pytest_cache/
+종합실습/
+*.pyc

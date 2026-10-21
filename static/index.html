@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>산림 큐레이터 | 대한민국 명산 매거진 & AI 산행 추천</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'sans-serif'],
+          },
+          colors: {
+            forest: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+              950: '#052e16',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 시니어 가독성: 전체 글자 기본 12.5% 확대 (Tailwind rem 단위 전체에 적용) */
+    html { font-size: 112.5%; }
+    body { font-family: 'Pretendard', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-stone-50 text-stone-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <div class="w-9 h-9 rounded-xl bg-forest-800 text-white flex items-center justify-center shadow-md">
+          <i data-lucide="mountain" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight text-stone-900">산림 큐레이터</span>
+          <span class="text-xs text-forest-700 ml-1 font-semibold px-2 py-0.5 bg-forest-50 rounded-full border border-forest-200">AI & 산림청 OpenAPI</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="document.getElementById('ai-section').scrollIntoView({behavior: 'smooth'})" 
+                class="px-4 py-2 text-sm font-medium text-white bg-forest-800 hover:bg-forest-900 rounded-lg shadow-sm transition flex items-center gap-1.5">
+          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-300"></i>
+          AI 산행 추천
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative bg-gradient-to-b from-stone-900 via-forest-950 to-stone-900 text-white py-20 px-4 overflow-hidden">
+    <!-- Decorative background glow -->
+    <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#22c55e_1px,transparent_1px)] [background-size:16px_16px]"></div>
+    <div class="max-w-4xl mx-auto text-center relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold mb-4">
+        <i data-lucide="compass" class="w-3.5 h-3.5"></i> 전국 4,705개 산림청 산 데이터 기반 맞춤형 큐레이션
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+        오늘 당신을 기다리는<br class="hidden sm:inline"> <span class="text-emerald-400">대한민국의 아름다운 숲길</span>
+      </h1>
+      <p class="text-stone-300 text-base sm:text-lg max-w-2xl mx-auto mb-10">
+        산림청 공식 데이터와 OpenAI 지능형 추천으로 내 체력과 일정에 딱 맞는 감성 산행지를 찾아보세요.
+      </p>
+
+      <!-- AI Prompt Box in Hero -->
+      <div id="ai-section" class="max-w-2xl mx-auto bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
+        <form onsubmit="handleAiRecommend(event)" class="flex flex-col sm:flex-row gap-2">
+          <div class="relative flex-1">
+            <i data-lucide="sparkles" class="w-5 h-5 text-emerald-400 absolute left-3.5 top-3.5"></i>
+            <input id="ai-query" type="text" 
+                   placeholder="예: 이번 주말 부모님과 갈 만한 완만한 서울 근교 산 추천해줘" 
+                   class="w-full pl-11 pr-4 py-3 bg-white/90 focus:bg-white text-stone-900 placeholder-stone-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition" />
+          </div>
+          <button id="ai-btn" type="submit" 
+                  class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50">
+            <span>큐레이션 받기</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </form>
+
+        <!-- Quick Tags -->
+        <div class="flex flex-wrap items-center gap-1.5 mt-3 px-2 text-xs text-stone-300">
+          <span class="text-stone-500">추천 키워드:</span>
+          <button onclick="setAiQuery('초보자도 2시간 안에 완등 가능한 서울 명산')" class="hover:text-emerald-300 underline decoration-dotted">#초보코스</button>
+          <button onclick="setAiQuery('가을 단풍이 절경인 100대 명산 3곳')" class="hover:text-emerald-300 underline decoration-dotted">#가을단풍</button>
+          <button onclick="setAiQuery('바위 능선이 멋진 스릴 있는 산행지')" class="hover:text-emerald-300 underline decoration-dotted">#암릉명산</button>
+          <button onclick="setAiQuery('지하철로 바로 갈 수 있는 수도권 둘레길 산')" class="hover:text-emerald-300 underline decoration-dotted">#대중교통편리</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Recommendation Result Banner (Hidden initially) -->
+  <section id="ai-result-box" class="hidden max-w-5xl mx-auto px-4 -mt-6 relative z-20 w-full">
+    <div class="bg-white rounded-2xl shadow-xl border border-emerald-200 p-6 relative overflow-hidden">
+      <div class="flex items-start justify-between gap-4 border-b border-stone-100 pb-4 mb-4">
+        <div class="flex items-center gap-2 text-emerald-800 font-bold text-lg">
+          <i data-lucide="bot" class="w-6 h-6 text-emerald-600"></i>
+          AI 산행 큐레이터의 맞춤 브리핑
+        </div>
+        <button onclick="document.getElementById('ai-result-box').classList.add('hidden')" class="text-stone-500 hover:text-stone-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="ai-result-content" class="text-sm text-stone-700 leading-relaxed whitespace-pre-line prose max-w-none">
+        <!-- Result content goes here -->
+      </div>
+      <!-- 추천된 산 카드 (누르면 상세·길찾기) -->
+      <div id="ai-result-cards" class="hidden mt-5 pt-4 border-t border-stone-100">
+        <p class="text-sm font-bold text-emerald-800 mb-3 flex items-center gap-1.5">
+          <i data-lucide="mouse-pointer-click" class="w-4 h-4"></i> 추천 산 카드 — 누르면 들머리·교통·길찾기 안내가 열립니다
+        </p>
+        <div id="ai-result-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content: Filters & Mountain Cards -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full">
+    
+    <!-- Filter Bar -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 mb-8 space-y-4">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Search Input -->
+        <div class="relative w-full md:w-80">
+          <i data-lucide="search" class="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5"></i>
+          <input id="search-input" oninput="debounceSearch()" type="text" placeholder="산 이름 또는 지역 검색 (예: 북한산, 강원)" 
+                 class="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-forest-700 focus:bg-white transition" />
+        </div>
+
+        <!-- Region Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 text-xs font-medium">
+          <button onclick="setRegion('전체')" class="region-btn active shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-900 text-white" data-region="전체">전체</button>
+          <button onclick="setRegion('서울')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="서울">서울</button>
+          <button onclick="setRegion('경기')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="경기">경기·인천</button>
+          <button onclick="setRegion('강원')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="강원">강원</button>
+          <button onclick="setRegion('충청')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="충청">충청·대전</button>
+          <button onclick="setRegion('전라')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="전라">전라·광주</button>
+          <button onclick="setRegion('경상')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="경상">경상·부산·대구·울산</button>
+          <button onclick="setRegion('제주')" class="region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200" data-region="제주">제주</button>
+        </div>
+      </div>
+
+      <!-- Secondary Filters: Elevation & Top100 -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-stone-100 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-stone-500 font-medium">고도 필터:</span>
+          <select id="elevation-select" onchange="fetchMountains()" class="bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-stone-700 focus:outline-none">
+            <option value="">전체 고도</option>
+            <option value="low">500m 이하 (가벼운 산책/초보)</option>
+            <option value="mid">500m ~ 1,000m (중급 산행)</option>
+            <option value="high">1,000m 이상 (본격 고산 등반)</option>
+          </select>
+        </div>
+
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="top100-check" onchange="fetchMountains()" class="rounded text-forest-700 focus:ring-forest-700 w-4 h-4">
+          <span class="text-stone-700 font-semibold flex items-center gap-1">
+            <i data-lucide="award" class="w-4 h-4 text-amber-500"></i>
+            산림청 100대 명산만 보기
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Mountain Count Header -->
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+        <i data-lucide="trees" class="w-5 h-5 text-forest-700"></i>
+        <span>탐색 가능한 명산</span>
+        <span id="mountain-count" class="text-sm font-normal text-stone-500">(로딩 중...)</span>
+      </h2>
+    </div>
+
+    <!-- Mountain Cards Grid -->
+    <div id="mountains-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- Cards rendered via JS -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden py-16 text-center">
+      <div class="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3 text-stone-500">
+        <i data-lucide="mountain-snow" class="w-8 h-8"></i>
+      </div>
+      <p class="text-stone-600 font-medium">검색 조건에 맞는 산이 없습니다.</p>
+      <p class="text-xs text-stone-500 mt-1">다른 검색어나 필터를 선택해 보세요.</p>
+    </div>
+  </main>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <!-- 항상 보이는 닫기 버튼: 창을 어디까지 내려도 같은 자리에 고정 -->
+    <button onclick="closeModal()" aria-label="안내 창 닫기"
+            class="fixed top-3 right-3 sm:top-5 sm:right-5 z-[60] h-12 pl-3 pr-4 rounded-full bg-white text-stone-900 font-bold text-base shadow-xl border border-stone-200 hover:bg-stone-100 flex items-center gap-1.5 transition">
+      <i data-lucide="x" class="w-6 h-6"></i> 닫기
+    </button>
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200">
+      
+      <!-- Modal Header Image -->
+      <div class="relative h-64 bg-stone-900 overflow-hidden">
+        <img id="modal-img" src="" alt="산 이미지" class="w-full h-full object-cover opacity-90 transition duration-300">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+
+        <div class="absolute bottom-4 left-6 right-6 text-white">
+          <div class="flex items-center gap-2 mb-1">
+            <span id="modal-top100" class="hidden px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-stone-950 flex items-center gap-1">
+              <i data-lucide="award" class="w-3.5 h-3.5"></i> 100대 명산
+            </span>
+            <span id="modal-height" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-md">
+              고도
+            </span>
+          </div>
+          <h3 id="modal-name" class="text-2xl font-bold tracking-tight">산 이름</h3>
+          <p id="modal-addr" class="text-xs text-stone-300 mt-0.5 flex items-center gap-1">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> 소재지
+          </p>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-6">
+        
+        <!-- 100 Top Reason -->
+        <div id="modal-top100-box" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+            <i data-lucide="bookmark" class="w-4 h-4 text-amber-600"></i>
+            산림청 100대 명산 선정 이유
+          </h4>
+          <p id="modal-top100-desc" class="text-xs text-amber-950 leading-relaxed"></p>
+        </div>
+
+        <!-- AI Mountain Tips Box -->
+        <div class="bg-forest-50 border border-forest-200 rounded-2xl p-4 relative">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-bold text-forest-900 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600"></i>
+              AI 시니어 산행 브리핑 (무릎 난이도 · 준비물)
+            </h4>
+            <span id="ai-tip-loading" class="text-xs text-forest-700 animate-pulse hidden font-semibold">AI 분석 중...</span>
+          </div>
+          <div id="modal-ai-tips" class="text-sm text-forest-950 leading-relaxed whitespace-pre-line">
+            잠시만 기다리시면 AI 맞춤 가이드가 생성됩니다.
+          </div>
+        </div>
+
+        <!-- 1. Transit Section (집 -> 산 교통편) -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h4 class="text-sm font-bold text-blue-950 flex items-center gap-1.5">
+              <i data-lucide="train-front" class="w-4 h-4 text-blue-600"></i>
+              집에서 산까지 대중교통 안내 <span id="transit-source" class="text-xs font-semibold"></span>
+            </h4>
+            <span id="modal-trailhead" class="text-xs font-bold px-2.5 py-1 bg-blue-100 text-blue-900 rounded-lg">
+              📍 들머리 확인 중...
+            </span>
+          </div>
+          <!-- 길찾기 사용 안내 -->
+          <p id="route-guide" class="text-sm text-blue-950 bg-blue-100/70 rounded-xl px-3 py-2 leading-relaxed">
+            아래 지도 버튼을 누르면 <b>도착지가 들머리로 입력된 대중교통 길찾기</b>가 열립니다. 지도에서 <b>출발지만 입력</b>하세요.
+          </p>
+          <!-- 웹 검색 검증 지하철/버스 요약 -->
+          <div id="modal-transit" class="text-sm text-blue-950 bg-white/80 rounded-xl p-3 border border-blue-100 leading-relaxed whitespace-pre-line">
+            실제 대중교통 들머리 정보를 웹에서 검색 중입니다...
+          </div>
+          <!-- 대중교통 길찾기 딥링크 버튼 -->
+          <div class="pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button onclick="openMapRoute('kakao')" class="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#f5dc00] text-stone-900 font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md transition">
+              <i data-lucide="navigation" class="w-4 h-4"></i> 카카오맵으로 길찾기
+            </button>
+            <button onclick="openMapRoute('naver')" class="w-full py-3 px-4 bg-[#03C75A] hover:bg-[#02b350] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md transition">
+              <i data-lucide="navigation" class="w-4 h-4"></i> 네이버지도로 길찾기
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Food Section (하산 후 맛집) -->
+        <div class="bg-orange-50/70 border border-orange-200 rounded-2xl p-4 space-y-3">
+          <h4 class="text-sm font-bold text-orange-950 flex items-center gap-1.5">
+            <i data-lucide="utensils" class="w-4 h-4 text-orange-600"></i>
+            하산 후 추천 맛집 & 별미 (누르면 카카오맵에서 영업시간·메뉴 확인)
+          </h4>
+          <!-- AI 맛집 추천 리스트 -->
+          <div id="modal-foods" class="space-y-2">
+            <div class="text-sm text-orange-900/70 py-2">주변 대표 먹거리 정보를 불러오는 중입니다...</div>
+          </div>
+          <!-- 시니어 인기 메뉴 원터치 지도 검색 -->
+          <div class="pt-2 border-t border-orange-200/60">
+            <span class="block text-xs font-semibold text-orange-900 mb-2">메뉴별 산 입구 실제 식당 바로 찾기:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="openFoodMap('파전 도토리묵')" class="px-3 py-1.5 bg-white hover:bg-orange-100 text-orange-900 border border-orange-200 rounded-xl text-xs font-semibold transition">🍶 파전·도토리묵</button>
+              <button onclick="openFoodMap('순두부 보리밥')" class="px-3 py-1.5 bg-white hover:bg-orange-100 text-orange-900 border border-orange-200 rounded-xl text-xs font-semibold transition">🍲 순두부·보리밥</button>
+              <button onclick="openFoodMap('백숙 오리')" class="px-3 py-1.5 bg-white hover:bg-orange-100 text-orange-900 border border-orange-200 rounded-xl text-xs font-semibold transition">🐓 백숙·오리보양식</button>
+              <button onclick="openFoodMap('국밥 해장국')" class="px-3 py-1.5 bg-white hover:bg-orange-100 text-orange-900 border border-orange-200 rounded-xl text-xs font-semibold transition">🍚 국밥·해장국</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <h4 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">산림 및 지세 설명</h4>
+          <p id="modal-details" class="text-sm text-stone-700 leading-relaxed whitespace-pre-line"></p>
+        </div>
+
+        <!-- Trails Section -->
+        <div>
+          <h4 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">등록된 숲길 구간</h4>
+          <div id="modal-trails" class="flex flex-wrap gap-1.5">
+            <!-- Trail pills -->
+          </div>
+        </div>
+
+        <!-- Management Info -->
+        <div class="pt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
+          <div>
+            <span class="font-medium text-stone-700">관리 기관:</span>
+            <span id="modal-admin">산림청</span>
+          </div>
+          <div id="modal-phone-box" class="flex items-center gap-1">
+            <i data-lucide="phone" class="w-3.5 h-3.5 text-stone-500"></i>
+            <span id="modal-phone">전화번호</span>
+          </div>
+        </div>
+
+        <!-- 하단 닫기 버튼 -->
+        <button onclick="closeModal()" class="w-full py-4 bg-stone-900 hover:bg-stone-800 text-white text-base font-bold rounded-2xl flex items-center justify-center gap-2 transition">
+          <i data-lucide="x" class="w-5 h-5"></i> 안내 창 닫기
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-stone-200 py-8 text-center text-xs text-stone-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 space-y-2">
+      <p class="font-medium text-stone-700">산림 큐레이터 (San Curator) · 산림청 공공데이터 OpenAPI & OpenAI 연동 서비스</p>
+      <p class="text-stone-500">데이터 출처: 산림청 산정보 표준 OpenAPI (국내 소재 3,368개 산 설명) v2.6</p>
+    </div>
+  </footer>
+
+  <script>
+    let currentRegion = "전체";
+    let searchDebounceTimeout = null;
+    let listRequestSeq = 0;   // 목록 요청 순번 (늦게 도착한 이전 응답 무시)
+    let modalRequestSeq = 0;  // 상세 창 요청 순번 (이전 산의 응답이 덮어쓰지 않도록)
+
+    // AI·공공데이터 문자열을 화면에 넣기 전 HTML 특수문자 처리
+    // 사진이 없는 산용 자리표시 이미지 (엉뚱한 해외 산 사진 대신)
+    const NO_IMG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240"><rect width="400" height="240" fill="#e7efe9"/>' +
+      '<path d="M0 240 L120 110 L170 160 L250 70 L400 240 Z" fill="#9cbfa7"/><path d="M0 240 L90 160 L160 210 L240 140 L400 240 Z" fill="#6f9e7d"/>' +
+      '<text x="200" y="40" font-family="sans-serif" font-size="20" fill="#4b6b55" text-anchor="middle">사진 준비 중</text></svg>');
+
+    function esc(v) {
+      return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    // 아이콘 CDN이 막혀도 앱은 동작하도록 안전하게 호출
+    function renderIcons() {
+      try { if (window.lucide) window.lucide.createIcons(); } catch (e) { console.warn("icon render skipped", e); }
+    }
+
+    // Load Lucide icons
+    document.addEventListener("DOMContentLoaded", () => {
+      renderIcons();
+      fetchMountains();
+    });
+
+    function setRegion(region) {
+      currentRegion = region;
+      document.querySelectorAll('.region-btn').forEach(btn => {
+        if (btn.dataset.region === region) {
+          btn.className = "region-btn active shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-900 text-white";
+        } else {
+          btn.className = "region-btn shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg bg-stone-100 text-stone-600 hover:bg-stone-200";
+        }
+      });
+      fetchMountains();
+    }
+
+    function debounceSearch() {
+      clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        fetchMountains();
+      }, 350);
+    }
+
+    async function fetchMountains() {
+      const q = document.getElementById("search-input").value.trim();
+      const elevation = document.getElementById("elevation-select").value;
+      const top100Only = document.getElementById("top100-check").checked;
+
+      const params = new URLSearchParams();
+      if (q) params.append("q", q);
+      if (currentRegion && currentRegion !== "전체") params.append("region", currentRegion);
+      if (elevation) params.append("elevation", elevation);
+      if (top100Only) params.append("top100_only", "true");
+
+      const seq = ++listRequestSeq;
+      try {
+        const resp = await fetch(`/api/mountains?${params.toString()}`);
+        const data = await resp.json();
+        if (seq !== listRequestSeq) return;
+        renderMountains(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        if (seq === listRequestSeq) {
+          document.getElementById("mountain-count").textContent = "(목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요)";
+        }
+      }
+    }
+
+    function renderMountains(list) {
+      const grid = document.getElementById("mountains-grid");
+      const emptyState = document.getElementById("empty-state");
+      const countLabel = document.getElementById("mountain-count");
+
+      if (!list || list.length === 0) {
+        countLabel.textContent = "(0개의 산)";
+        grid.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      countLabel.textContent = `(${list.length}개의 산)`;
+      emptyState.classList.add("hidden");
+      grid.innerHTML = list.map(m => {
+        const defaultImg = NO_IMG;
+        const imgUrl = m.image || NO_IMG;
+        return `
+          <div onclick="openModal(this.dataset.code)" data-code="${esc(m.code)}" 
+               class="group bg-white rounded-2xl border border-stone-200 hover:border-emerald-300 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col">
+            <!-- Image Area -->
+            <div class="relative h-48 bg-stone-100 overflow-hidden">
+              <img src="${esc(imgUrl)}" alt="${esc(m.name)}" loading="lazy" onerror="this.onerror=null;this.src='${defaultImg}'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              
+              <!-- Badges -->
+              <div class="absolute top-3 left-3 flex flex-wrap gap-1">
+                ${m.is_top100 ? `
+                  <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-400 text-stone-900 shadow-sm flex items-center gap-1">
+                    <i data-lucide="award" class="w-3 h-3"></i> 100대명산
+                  </span>
+                ` : ''}
+              </div>
+
+              <div class="absolute bottom-3 left-3 right-3 text-white">
+                <div class="flex items-baseline justify-between">
+                  <h3 class="text-lg font-bold tracking-tight">${esc(m.name)}</h3>
+                  <span class="text-xs font-semibold px-2 py-0.5 bg-black/40 backdrop-blur-md rounded-md">${m.height ? esc(m.height) + "m" : "높이 미등록"}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <p class="text-xs text-stone-500 flex items-center gap-1 mb-2">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-stone-500 shrink-0"></i>
+                  <span class="truncate">${esc(m.address || '소재지 미등록')}</span>
+                </p>
+                <p class="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                  ${esc(m.top100_reason || m.details || '산림청 등록 산 정보')}
+                </p>
+              </div>
+
+              <div class="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+                <span>${esc(m.admin || '산림청')}</span>
+                <span class="text-forest-700 font-semibold group-hover:underline flex items-center gap-0.5">
+                  상세보기 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      renderIcons();
+    }
+
+    let currentMountain = null;
+    let currentTrailhead = "";
+    let currentDest = null;   // {name, kakao_id, wx, wy, lat, lng} 검증된 들머리 좌표
+
+    // Modal Operations
+    async function openModal(code) {
+      const seq = ++modalRequestSeq;
+      currentMountain = null;
+      const modal = document.getElementById("detail-modal");
+      modal.classList.remove("hidden");
+      const modalCard = modal.querySelector(".overflow-y-auto");
+      if (modalCard) modalCard.scrollTop = 0;
+      document.getElementById("modal-name").textContent = "불러오는 중...";
+      document.getElementById("modal-height").textContent = "";
+      document.getElementById("modal-addr").textContent = "";
+      document.getElementById("modal-details").textContent = "";
+      document.getElementById("modal-trails").innerHTML = "";
+      document.getElementById("modal-img").src = NO_IMG;
+      document.getElementById("modal-top100").classList.add("hidden");
+      document.getElementById("modal-top100-box").classList.add("hidden");
+      document.body.style.overflow = "hidden";
+
+      currentDest = null;
+      document.getElementById("transit-source").textContent = "";
+
+      // Reset modal fields
+      document.getElementById("modal-ai-tips").textContent = "AI 맞춤 가이드를 생성하고 있습니다...";
+      document.getElementById("modal-trailhead").textContent = "📍 들머리 확인 중...";
+      document.getElementById("modal-transit").textContent = "실제 대중교통 들머리 정보를 웹에서 검색 중입니다...";
+      document.getElementById("modal-foods").innerHTML = `<div class="text-sm text-orange-900/70 animate-pulse py-1">산 입구 실제 유명 식당을 웹에서 검색 중입니다...</div>`;
+      document.getElementById("ai-tip-loading").classList.remove("hidden");
+
+      try {
+        const resp = await fetch(`/api/mountain/${encodeURIComponent(code)}`);
+        const data = await resp.json();
+        if (seq !== modalRequestSeq) return;
+        if (!resp.ok || !data.mountain) {
+          const msg = (data && data.detail) || "산 정보를 불러오지 못했습니다.";
+          document.getElementById("modal-name").textContent = "정보를 찾을 수 없습니다";
+          document.getElementById("modal-details").textContent = msg;
+          ["modal-ai-tips", "modal-transit"].forEach(id => document.getElementById(id).textContent = "목록에서 산을 다시 검색해 주세요.");
+          document.getElementById("modal-trailhead").textContent = "📍 -";
+          document.getElementById("modal-foods").innerHTML = "";
+          document.getElementById("ai-tip-loading").classList.add("hidden");
+          return;
+        }
+        const m = data.mountain;
+        currentMountain = m;
+        currentTrailhead = `${m.name.split("_")[0]} 등산로 입구`;
+
+        document.getElementById("modal-name").textContent = m.name;
+        document.getElementById("modal-height").textContent = m.height ? `해발 ${m.height}m` : "높이 미등록";
+        document.getElementById("modal-addr").innerHTML = `<i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1"></i> ${esc(m.address || '소재지 정보 없음')}`;
+        document.getElementById("modal-details").textContent = m.details || "상세 정보가 등록되지 않았습니다.";
+        document.getElementById("modal-admin").textContent = m.admin || "산림청";
+        document.getElementById("modal-phone").textContent = m.admin_phone || "문의처 없음";
+
+        // Image setup
+        const defaultImg = NO_IMG;
+        const firstImg = data.images && data.images.length > 0 ? data.images[0].url : (m.image || defaultImg);
+        const modalImg = document.getElementById("modal-img");
+        modalImg.onerror = () => { modalImg.onerror = null; modalImg.src = defaultImg; };
+        modalImg.src = firstImg;
+
+        // Top 100
+        const top100Badge = document.getElementById("modal-top100");
+        const top100Box = document.getElementById("modal-top100-box");
+        if (m.is_top100) {
+          top100Badge.classList.remove("hidden");
+          top100Box.classList.remove("hidden");
+          document.getElementById("modal-top100-desc").textContent = m.top100_reason;
+        } else {
+          top100Badge.classList.add("hidden");
+          top100Box.classList.add("hidden");
+        }
+
+        // Trails
+        const trailsContainer = document.getElementById("modal-trails");
+        if (data.trails && data.trails.length > 0) {
+          trailsContainer.innerHTML = data.trails.map(t => `
+            <span class="px-2.5 py-1 bg-stone-100 text-stone-700 text-xs rounded-lg border border-stone-200">
+              ${esc(t)}
+            </span>
+          `).join("");
+        } else {
+          trailsContainer.innerHTML = `<span class="text-xs text-stone-500">등록된 둘레길/숲길 구간 정보가 없습니다.</span>`;
+        }
+
+        renderIcons();
+
+        // Call OpenAI web search for verified tips, trailhead, transit, and foods
+        fetchAiTips(m, "", seq);
+
+      } catch (err) {
+        console.error("Modal fetch error:", err);
+        if (seq === modalRequestSeq) {
+          document.getElementById("modal-name").textContent = "연결 오류";
+          document.getElementById("modal-details").textContent = "인터넷 연결을 확인한 뒤 다시 시도해 주세요.";
+          document.getElementById("ai-tip-loading").classList.add("hidden");
+        }
+      }
+    }
+
+    async function fetchAiTips(m, departure = "", seq = modalRequestSeq) {
+      try {
+        const resp = await fetch("/api/mountain-tip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: m.name,
+            height: m.height,
+            address: m.address || "",
+            details: m.details || "",
+            code: m.code || "",
+            departure: departure
+          })
+        });
+        const result = await resp.json();
+        if (seq !== modalRequestSeq) return;
+        currentDest = result.dest || null;
+        const SRC = {
+          verified: ["· 사전 검증 정보", "text-emerald-700"],
+          checked: ["· 지도 확인 정보 (버스 시간표는 방문 전 확인)", "text-emerald-700"],
+          ai: ["· AI 웹 검색 결과 (방문 전 확인 권장)", "text-amber-700"],
+        }[result.source] || ["· AI 웹 검색 결과 (방문 전 확인 권장)", "text-amber-700"];
+        const srcEl = document.getElementById("transit-source");
+        srcEl.textContent = SRC[0];
+        srcEl.className = "text-xs font-semibold " + SRC[1];
+        document.getElementById("route-guide").innerHTML = currentDest
+          ? '아래 지도 버튼을 누르면 <b>도착지가 들머리로 입력된 대중교통 길찾기</b>가 열립니다. 지도에서 <b>출발지만 입력</b>하세요.'
+          : '아래 지도 버튼을 누르면 <b>들머리 검색 결과</b>가 열립니다. 위치를 확인한 뒤 <b>[도착]</b>을 누르고 출발지를 입력하세요.';
+        if (result.trailhead) {
+          currentTrailhead = result.trailhead;
+          document.getElementById("modal-trailhead").textContent = `📍 들머리: ${result.trailhead}`;
+        }
+        document.getElementById("modal-ai-tips").textContent = result.tip || "안전한 산행을 즐기세요!";
+        document.getElementById("modal-transit").textContent = result.transit || "하단 지도 길찾기 버튼을 눌러 대중교통 경로를 확인하세요.";
+
+        const foodsContainer = document.getElementById("modal-foods");
+        if (result.foods && result.foods.length > 0) {
+          foodsContainer.innerHTML = result.foods.map(f => `
+            <div onclick="openFoodPlace(this.dataset.kid, this.dataset.q)" data-kid="${esc(f.kakao_id || '')}" data-q="${esc(f.title)}" class="p-3 bg-white hover:bg-orange-100/80 border border-orange-200 rounded-xl cursor-pointer transition flex items-center justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-sm text-stone-900">${esc(f.title)}</span>
+                  <span class="text-[11px] px-2 py-0.5 bg-orange-100 text-orange-800 rounded-md font-semibold">${esc(f.tag || '별미')}</span>
+                </div>
+                <p class="text-xs text-stone-600 mt-0.5">${esc(f.desc || '')}</p>
+              </div>
+              <span class="text-xs font-bold text-emerald-700 shrink-0 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                ${f.kakao_id ? '카카오맵 장소' : '지도 검색'} <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+          `).join("");
+          renderIcons();
+        } else {
+          foodsContainer.innerHTML = `<div class="text-xs text-stone-500">아래 메뉴 버튼을 눌러 산 입구 식당을 바로 확인해 보세요.</div>`;
+        }
+      } catch (err) {
+        if (seq !== modalRequestSeq) return;
+        document.getElementById("modal-ai-tips").textContent = "AI 팁을 불러오지 못했습니다. 안전 산행 수칙을 준수하세요.";
+        document.getElementById("modal-transit").textContent = "아래 지도 길찾기 버튼을 눌러 대중교통 경로를 확인하세요.";
+        document.getElementById("modal-foods").innerHTML = `<div class="text-xs text-stone-500">아래 메뉴 버튼을 눌러 산 입구 식당을 바로 확인해 보세요.</div>`;
+      } finally {
+        if (seq === modalRequestSeq) document.getElementById("ai-tip-loading").classList.add("hidden");
+      }
+    }
+
+    // 위경도 → 네이버지도 좌표(웹 메르카토르)
+    function toMercator(lat, lng) {
+      const x = lng * 20037508.34 / 180;
+      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) * 6378137;
+      return [x.toFixed(1), y.toFixed(1)];
+    }
+
+    // 도착지(들머리)가 입력된 대중교통 길찾기 화면을 연다. 출발지는 지도에서 직접 입력.
+    function openMapRoute(provider) {
+      if (!currentMountain) return;
+      const d = currentDest;
+      const name = ((d && d.name) || currentTrailhead || (currentMountain.name.split("_")[0] + " 등산로 입구"))
+        .replace(/\s*[\(（].*?[\)）]/g, "").trim();
+      let url;
+      if (provider === "kakao") {
+        url = d
+          ? `https://map.kakao.com/?map_type=TYPE_MAP&target=traffic&rt=%2C%2C${d.wx}%2C${d.wy}&rt1=&rt2=${encodeURIComponent(name)}&rtIds=%2C&rtTypes=%2C`
+          : `https://map.kakao.com/?q=${encodeURIComponent(name)}`;
+      } else {
+        if (d) {
+          const [x, y] = toMercator(d.lat, d.lng);
+          url = `https://map.naver.com/p/directions/-/${x},${y},${encodeURIComponent(name)},,ADDRESS_POI/-/transit`;
+        } else {
+          url = `https://map.naver.com/p/search/${encodeURIComponent(name)}`;
+        }
+      }
+      window.open(url, "_blank");
+    }
+
+    // 검증된 식당은 카카오맵 장소 페이지(주소·영업시간·메뉴)로 바로 연결, 그 외에는 지도 검색
+    function openFoodPlace(kakaoId, title) {
+      if (kakaoId) {
+        window.open(`https://place.map.kakao.com/${encodeURIComponent(kakaoId)}`, "_blank");
+      } else {
+        openFoodMap(title);
+      }
+    }
+
+    function openFoodMap(keyword) {
+      if (!currentMountain) return;
+      const mName = currentMountain.name.split("_")[0];
+      const mRoot = mName.replace(/산$/, "");
+      // 키워드에 이미 산 이름이나 명칭(예: 관악, 태백)이 포함되어 있으면 단독 검색, 없으면 산이름 결합
+      const searchQuery = (keyword.includes(mName) || (mRoot.length >= 2 && keyword.includes(mRoot)))
+        ? keyword 
+        : `${mName} ${keyword}`;
+      window.open(`https://map.naver.com/p/search/${encodeURIComponent(searchQuery.trim())}`, "_blank");
+    }
+
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+    document.getElementById("detail-modal").addEventListener("click", e => { if (e.target.id === "detail-modal") closeModal(); });
+
+    function closeModal() {
+      modalRequestSeq++;
+      document.getElementById("detail-modal").classList.add("hidden");
+      document.body.style.overflow = "auto";
+    }
+
+    // AI 추천 결과 아래에 추천 산 카드 표시
+    function renderRecommendCards(list) {
+      const box = document.getElementById("ai-result-cards");
+      const grid = document.getElementById("ai-result-cards-grid");
+      if (!list.length) { box.classList.add("hidden"); grid.innerHTML = ""; return; }
+      grid.innerHTML = list.map((m, i) => `
+        <button type="button" onclick="openModal(this.dataset.code)" data-code="${esc(m.code)}"
+                class="text-left bg-white rounded-2xl border-2 border-emerald-200 hover:border-emerald-500 hover:shadow-lg transition overflow-hidden flex flex-col">
+          <div class="relative h-32 bg-stone-100">
+            <img src="${esc(m.image || NO_IMG)}" alt="${esc(m.name)}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=NO_IMG">
+            <span class="absolute top-2 left-2 w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center shadow">${i + 1}</span>
+            ${m.is_top100 ? '<span class="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-stone-900">100대명산</span>' : ''}
+          </div>
+          <div class="p-3 flex-1 flex flex-col gap-1">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-lg font-bold text-stone-900">${esc(m.name.split("_")[0])}</span>
+              <span class="text-sm text-stone-600">${m.height ? esc(m.height) + "m" : ""}</span>
+            </div>
+            <span class="text-sm text-stone-600 truncate">${esc(m.address || "")}</span>
+            <span class="mt-2 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold text-center">들머리·길찾기 보기</span>
+          </div>
+        </button>`).join("");
+      box.classList.remove("hidden");
+      renderIcons();
+    }
+
+    // AI Recommendation
+    function setAiQuery(text) {
+      document.getElementById("ai-query").value = text;
+      handleAiRecommend(new Event("submit"));
+    }
+
+    async function handleAiRecommend(e) {
+      if (e) e.preventDefault();
+      const queryInput = document.getElementById("ai-query");
+      const btn = document.getElementById("ai-btn");
+      const resultBox = document.getElementById("ai-result-box");
+      const resultContent = document.getElementById("ai-result-content");
+
+      const query = queryInput.value.trim();
+      if (!query) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>분석 중...</span>`;
+      renderIcons();
+
+      resultBox.classList.remove("hidden");
+      document.getElementById("ai-result-cards").classList.add("hidden");
+      document.getElementById("ai-result-cards-grid").innerHTML = "";
+      resultContent.innerHTML = `<div class="py-4 text-emerald-800 animate-pulse font-medium">산림청 공공데이터를 탐색하고 AI 맞춤 산행지를 큐레이션하는 중입니다...</div>`;
+
+      try {
+        const resp = await fetch("/api/recommend", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: query })
+        });
+        const data = await resp.json();
+        resultContent.textContent = data.recommendation;
+        renderRecommendCards(data.mountains || []);
+      } catch (err) {
+        resultContent.textContent = "AI 추천 생성 중 오류가 발생했습니다. 다시 시도해 주세요.";
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>큐레이션 받기</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        renderIcons();
+      }
+    }
+  </script>
+</body>
+</html>

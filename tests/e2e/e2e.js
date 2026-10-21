@@ -1,0 +1,73 @@
+const { chromium } = require('playwright');
+const R = []; const ok = (name, cond, extra='') => { R.push(`${cond ? '✅' : '❌'} ${name} ${extra}`); };
+(async () => {
+  const browser = await chromium.launch();
+  // A) CDN 차단 상태 그대로
+  {
+    const p = await browser.newPage();
+    await p.route(/cdn\.tailwindcss|unpkg|jsdelivr/, r => r.abort());
+    await p.goto('http://localhost:8770/'); await p.waitForTimeout(1500);
+    const cnt = await p.textContent('#mountain-count');
+    ok('A. CDN(아이콘·스타일) 차단 시에도 목록 표시', cnt.includes('33'), `→ "${cnt}"`);
+    await p.close();
+  }
+  // B) CDN 대체 스텁
+  const ctx = await browser.newContext();
+  await ctx.route(/cdn\.tailwindcss/, r => r.fulfill({ body: 'window.tailwind={};', contentType: 'text/javascript' }));
+  await ctx.route(/unpkg\.com\/lucide/, r => r.fulfill({ body: 'window.lucide={createIcons(){}};', contentType: 'text/javascript' }));
+  await ctx.route(/jsdelivr/, r => r.fulfill({ body: '', contentType: 'text/css' }));
+  await ctx.addInitScript(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); }; });
+  const p = await ctx.newPage();
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  let apiCalls = []; p.on('request', r => { if (r.url().includes('/api/')) apiCalls.push(r.url()); });
+  await p.goto('http://localhost:8770/'); await p.waitForTimeout(800);
+  ok('B1. 초기 목록 33개', (await p.textContent('#mountain-count')).includes('33'));
+  await p.click('button[data-region="경기"]'); await p.waitForTimeout(500);
+  ok('B2. 경기·인천 필터', (await p.textContent('#mountain-count')).includes('3'), await p.textContent('#mountain-count'));
+  await p.click('button[data-region="전체"]');
+  await p.fill('#search-input', '없는산999'); await p.waitForTimeout(900);
+  ok('B3. 없는 산 → 빈 상태 안내', await p.isVisible('#empty-state'));
+  await p.fill('#search-input', '악성'); await p.waitForTimeout(900);
+  ok('B4. 실시간 검색 결과 1건', (await p.textContent('#mountain-count')).includes('1'));
+  ok('B5. 산 이름 HTML 주입 차단', !(await p.evaluate(() => window.__xss)), '');
+  await p.click('#mountains-grid > div'); await p.waitForTimeout(1500);
+  ok('B6. 실시간 산 상세 열림', (await p.textContent('#modal-name')).includes('악성'));
+  ok('B7. 맛집 HTML/스크립트 주입 차단', !(await p.evaluate(() => window.__xss2)) && (await p.textContent('#modal-foods')).includes("할매's <b>집</b>"));
+  await p.click('#modal-foods > div'); 
+  ok("B8. 따옴표 있는 맛집 클릭 → 지도 열림", (await p.evaluate(() => window.__opened.at(-1) || '')).includes(encodeURIComponent("할매's")));
+  await p.keyboard.press('Escape');
+  ok('B9. Esc로 상세 창 닫기', await p.evaluate(() => document.getElementById('detail-modal').classList.contains('hidden')));
+  // 경쟁 상태: 느린산 열고 바로 닫은 뒤 청계산 열기
+  await p.fill('#search-input', '느린'); await p.waitForTimeout(900);
+  await p.click('#mountains-grid > div'); await p.waitForTimeout(400);
+  await p.keyboard.press('Escape');
+  await p.fill('#search-input', '청계산'); await p.waitForTimeout(900);
+  await p.click('#mountains-grid > div'); await p.waitForTimeout(3500);
+  const th = await p.textContent('#modal-trailhead');
+  ok('B10. 이전 산 늦은 응답이 현재 산을 덮어쓰지 않음', th.includes('원터골'), `→ ${th.trim()}`);
+  await p.fill('#departure-input', '잠실역');
+  await p.click('text=카카오맵 길찾기');
+  let u = await p.evaluate(() => window.__opened.at(-1));
+  ok('B11. 카카오맵 들머리 길찾기 URL', u.includes('map.kakao.com') && decodeURIComponent(u).includes('eName=청계산 원터골입구') && decodeURIComponent(u).includes('sName=잠실역'), decodeURIComponent(u));
+  await p.click('text=네이버지도 길찾기');
+  u = await p.evaluate(() => window.__opened.at(-1));
+  ok('B12. 네이버지도 들머리 길찾기 URL', decodeURIComponent(u).includes('eName=청계산 원터골입구'), decodeURIComponent(u));
+  await p.click('text=출발지 저장'); await p.waitForTimeout(600);
+  ok('B13. 출발지 저장 → 교통 안내에 반영', (await p.textContent('#modal-transit')).includes('잠실역 출발'));
+  await p.evaluate(() => document.getElementById('detail-modal').dispatchEvent(new MouseEvent('click', {bubbles: true})));
+  ok('B14. 바깥 클릭으로 상세 창 닫기', await p.evaluate(() => document.getElementById('detail-modal').classList.contains('hidden')));
+  await p.evaluate(() => openModal('000000000')); await p.waitForTimeout(800);
+  ok('B15. 없는 코드 → 안내 문구(빈 화면/오류 아님)', (await p.textContent('#modal-name')).includes('찾을 수 없습니다'));
+  await p.keyboard.press('Escape');
+  apiCalls = [];
+  await p.fill('#ai-query', '   '); await p.click('#ai-btn'); await p.waitForTimeout(500);
+  ok('B16. 빈 AI 질문 → 서버 호출 없음', !apiCalls.some(x => x.includes('recommend')));
+  await p.fill('#ai-query', '완만한 산'); await p.click('#ai-btn'); await p.waitForTimeout(800);
+  ok('B17. AI 추천 결과가 텍스트로 표시(HTML 미해석)', (await p.textContent('#ai-result-content')).includes('<b>굵게</b>'));
+  await p.setViewportSize({ width: 375, height: 800 });
+  const sw = await p.evaluate(() => document.documentElement.scrollWidth);
+  ok('B18. 휴대폰 폭(375px) 가로 스크롤 없음', sw <= 375, `scrollWidth=${sw} (스타일 CDN 스텁 상태라 참고용)`);
+  ok('B19. 자바스크립트 오류 없음', errs.length === 0, errs.join(' | '));
+  console.log(R.join('\n'));
+  await browser.close();
+})();
