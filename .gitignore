@@ -8,3 +8,22 @@ foods_check.json
 .pytest_cache/
 종합실습/
 *.pyc
+발표용.py
+산림 큐레이터 — 프로젝트 발표 자료.md
+
+# 서비스에 불필요한 작업 파일 (로컬에만 보관)
+top100_candidates.json
+top100_master_preview.json
+top100_stage_cache.json
+top100_pass1.txt
+top100_pass2.txt
+build_top100.py
+verify_top100.py
+verify_live.py
+verify_live2.py
+export_spec.py
+OpenAPI활용가이드_산림청_산정보(국내 소재 3,368개 설명)_v2.6.docx
+LLM_Project_Plan_Guide.md
+Senior_Mountain_Service_Plan.md
+Service_Plan261020.md
+오류점검_수정내역.md
